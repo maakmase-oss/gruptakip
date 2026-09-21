@@ -1,9 +1,9 @@
 import http from"node:http";import fs from"node:fs";import QRCode from"qrcode";import pkg from"whatsapp-web.js";const{Client,LocalAuth}=pkg;
 const port=Number(process.env.PORT||3000),apiKey=process.env.WORKER_API_KEY||"",dataDir="/data";fs.mkdirSync(dataDir,{recursive:true});const ef=dataDir+"/events.json",gf=dataDir+"/monitored.json";const read=(f,d)=>{try{return JSON.parse(fs.readFileSync(f,"utf8"))}catch{return d}},save=(f,d)=>fs.writeFileSync(f,JSON.stringify(d,null,2));let events=read(ef,[]),monitored=new Set(read(gf,[])),qr=null,connected=false,waState="starting",lastWaEvent=null,clientInfo=null;
-const client=new Client({authStrategy:new LocalAuth({clientId:"gruptakip",dataPath:"/data/waweb"}),puppeteer:{headless:true,args:["--no-sandbox","--disable-setuid-sandbox","--disable-dev-shm-usage","--no-zygote","--disable-gpu"]}});
+const client=new Client({authStrategy:new LocalAuth({clientId:"gruptakip",dataPath:"/data/waweb"}),qrMaxRetries:0,authTimeoutMs:120000,puppeteer:{headless:true,args:["--no-sandbox","--disable-setuid-sandbox","--disable-dev-shm-usage","--disable-gpu","--disable-background-networking=false"]}});
 const mark=(s)=>{waState=s;lastWaEvent=new Date().toISOString();console.log("WA_STATE",s,lastWaEvent)};
-client.on("qr",x=>{qr=x;connected=false;mark("qr");console.log("WEB_QR_READY")});
-client.on("authenticated",()=>{qr=null;mark("authenticated");console.log("WHATSAPP_WEB_AUTHENTICATED")});client.on("loading_screen",(percent,message)=>console.log("WA_LOADING_SCREEN",percent,message));
+client.on("qr",x=>{qr=x;connected=false;mark("qr");console.log("WEB_QR_READY",x.slice(0,28))});
+client.on("authenticated",()=>{qr=null;mark("authenticated");console.log("WHATSAPP_WEB_AUTHENTICATED")});client.on("remote_session_saved",()=>console.log("WA_REMOTE_SESSION_SAVED"));client.on("loading_screen",(percent,message)=>console.log("WA_LOADING_SCREEN",percent,message));
 client.on("ready",()=>{connected=true;qr=null;clientInfo=client.info?{wid:client.info.wid?._serialized||null,pushname:client.info.pushname||null}:null;mark("ready");console.log("WHATSAPP_WEB_READY")});
 client.on("auth_failure",m=>{connected=false;mark("auth_failure");console.error("WHATSAPP_WEB_AUTH_FAILURE",m)});
 client.on("change_state",s=>{mark("state:"+s);console.log("WHATSAPP_WEB_CHANGE_STATE",s)});
