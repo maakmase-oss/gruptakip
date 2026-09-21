@@ -1,0 +1,5 @@
+import { NextResponse } from "next/server";
+const enc=new TextEncoder();
+function b64u(bytes){let s="";for(const b of bytes)s+=String.fromCharCode(b);return btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"")}
+async function sign(payload){const secret=process.env.SESSION_SECRET||process.env.PANEL_PASSWORD||"";if(!secret)return"";const key=await crypto.subtle.importKey("raw",enc.encode(secret),{name:"HMAC",hash:"SHA-256"},false,["sign"]);return b64u(new Uint8Array(await crypto.subtle.sign("HMAC",key,enc.encode(payload))))}
+export async function GET(request){const raw=request.cookies.get("gt_session")?.value,dot=raw?.lastIndexOf(".")??-1;if(dot<1)return NextResponse.json({ok:false},{status:401});const payload=raw.slice(0,dot),sig=raw.slice(dot+1);if(await sign(payload)!==sig)return NextResponse.json({ok:false},{status:401});try{const d=JSON.parse(atob(payload.replace(/-/g,"+").replace(/_/g,"/")));if(Date.now()>d.exp)return NextResponse.json({ok:false},{status:401});return NextResponse.json({ok:true,user:d.user,role:d.role})}catch{return NextResponse.json({ok:false},{status:401})}}
