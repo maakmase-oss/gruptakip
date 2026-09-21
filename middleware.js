@@ -1,47 +1,9 @@
 import { NextResponse } from "next/server";
-
-const ROLE_PERMISSIONS={
-  superadmin:["*"],
-  admin:["view","blacklist","group_membership","messages","accounts"],
-  operation:["view","blacklist"],
-  viewer:["view"]
-};
-
-function credentials(){
-  const users=[];
-  if(process.env.PANEL_USER&&process.env.PANEL_PASSWORD)users.push({user:process.env.PANEL_USER,pass:process.env.PANEL_PASSWORD,role:"superadmin"});
-  try{
-    const extra=JSON.parse(process.env.PANEL_USERS||"[]");
-    for(const x of extra)if(x?.user&&x?.pass)users.push({user:String(x.user),pass:String(x.pass),role:["superadmin","admin","operation","viewer"].includes(x.role)?x.role:"viewer"});
-  }catch{}
-  return users;
-}
-function authenticate(request){
-  const auth=request.headers.get("authorization");
-  if(!auth)return null;
-  const [scheme,encoded]=auth.split(" ");
-  if(scheme!=="Basic"||!encoded)return null;
-  try{
-    const decoded=atob(encoded),i=decoded.indexOf(":");
-    if(i<0)return null;
-    const user=decoded.slice(0,i),pass=decoded.slice(i+1);
-    return credentials().find(x=>x.user===user&&x.pass===pass)||null;
-  }catch{return null}
-}
-function requiredPermission(path,method){
-  if(path.startsWith("/api/worker/send-message"))return"messages";
-  if(path.startsWith("/api/worker/group-membership"))return"group_membership";
-  if(path.startsWith("/api/worker/accounts")&&method==="POST")return"accounts";
-  if(path.startsWith("/api/worker/blacklist")&&method==="POST")return"blacklist";
-  if(path.startsWith("/api/worker/groups")&&method==="POST")return"accounts";
-  return"view";
-}
-export function middleware(request){
-  const member=authenticate(request);
-  if(!member)return new NextResponse("GrupTakip - Giris gerekli",{status:401,headers:{"WWW-Authenticate":'Basic realm="GrupTakip", charset="UTF-8"',"Cache-Control":"no-store"}});
-  const need=requiredPermission(request.nextUrl.pathname,request.method),allowed=ROLE_PERMISSIONS[member.role]||ROLE_PERMISSIONS.viewer;
-  if(!(allowed.includes("*")||allowed.includes(need)))return NextResponse.json({ok:false,error:"Bu işlem için yetkiniz yok."},{status:403,headers:{"Cache-Control":"no-store"}});
-  const headers=new Headers(request.headers);headers.set("x-panel-user",member.user);headers.set("x-panel-role",member.role);
-  return NextResponse.next({request:{headers}});
-}
+const ROLE_PERMISSIONS={superadmin:["*"],admin:["view","blacklist","group_membership","messages","accounts"],operation:["view","blacklist"],viewer:["view"]};
+const enc=new TextEncoder();
+function b64u(bytes){let s="";for(const b of bytes)s+=String.fromCharCode(b);return btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"")}
+async function sign(payload){const secret=process.env.SESSION_SECRET||process.env.PANEL_PASSWORD||"";if(!secret)return"";const key=await crypto.subtle.importKey("raw",enc.encode(secret),{name:"HMAC",hash:"SHA-256"},false,["sign"]);return b64u(new Uint8Array(await crypto.subtle.sign("HMAC",key,enc.encode(payload))))}
+async function session(request){const raw=request.cookies.get("gt_session")?.value;if(!raw)return null;const dot=raw.lastIndexOf(".");if(dot<1)return null;const payload=raw.slice(0,dot),sig=raw.slice(dot+1);if(await sign(payload)!==sig)return null;try{const data=JSON.parse(atob(payload.replace(/-/g,"+").replace(/_/g,"/")));if(!data.user||!data.role||Date.now()>data.exp)return null;return data}catch{return null}}
+function requiredPermission(path,method){if(path.startsWith("/api/worker/send-message"))return"messages";if(path.startsWith("/api/worker/group-membership"))return"group_membership";if(path.startsWith("/api/worker/accounts")&&method==="POST")return"accounts";if(path.startsWith("/api/worker/blacklist")&&method==="POST")return"blacklist";if(path.startsWith("/api/worker/groups")&&method==="POST")return"accounts";if(path.startsWith("/api/worker/panel-users"))return"accounts";return"view"}
+export async function middleware(request){const path=request.nextUrl.pathname;if(path==="/login"||path.startsWith("/api/auth/"))return NextResponse.next();const member=await session(request);if(!member){if(path.startsWith("/api/"))return NextResponse.json({ok:false,error:"Oturum gerekli"},{status:401});return NextResponse.redirect(new URL("/login",request.url))}const need=requiredPermission(path,request.method),allowed=ROLE_PERMISSIONS[member.role]||ROLE_PERMISSIONS.viewer;if(!(allowed.includes("*")||allowed.includes(need)))return NextResponse.json({ok:false,error:"Bu işlem için yetkiniz yok."},{status:403});const headers=new Headers(request.headers);headers.set("x-panel-user",member.user);headers.set("x-panel-role",member.role);return NextResponse.next({request:{headers}})}
 export const config={matcher:["/((?!_next/static|_next/image|favicon.ico).*)"]};
