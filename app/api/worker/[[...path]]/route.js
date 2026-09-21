@@ -1,18 +1,3 @@
 const BASE="https://gruptakip-worker-production.up.railway.app";
-
-async function proxy(request,{params}){
-  const {path=[]}=await params;
-  const target=BASE+"/"+path.join("/");
-  const headers={"x-api-key":process.env.WORKER_API_KEY||""};
-  const init={method:request.method,headers,cache:"no-store"};
-  if(request.method!=="GET"&&request.method!=="HEAD"){
-    headers["content-type"]=request.headers.get("content-type")||"application/json";
-    init.body=await request.text();
-  }
-  const r=await fetch(target,init);
-  const body=await r.arrayBuffer();
-  return new Response(body,{status:r.status,headers:{"content-type":r.headers.get("content-type")||"application/json","cache-control":"no-store"}});
-}
-export const GET=proxy;
-export const POST=proxy;
-export const OPTIONS=()=>new Response(null,{status:204});
+async function proxy(request,{params}){const {path=[]}=await params;const src=new URL(request.url);const target=BASE+"/"+path.join("/")+(src.search||"");const headers={"x-api-key":process.env.WORKER_API_KEY||""};const init={method:request.method,headers,cache:"no-store"};if(request.method!=="GET"&&request.method!=="HEAD"){headers["content-type"]=request.headers.get("content-type")||"application/json";init.body=await request.text()}const r=await fetch(target,init),body=await r.arrayBuffer();return new Response(body,{status:r.status,headers:{"content-type":r.headers.get("content-type")||"application/json","cache-control":"no-store"}})}
+export const GET=proxy;export const POST=proxy;export const OPTIONS=()=>new Response(null,{status:204});
