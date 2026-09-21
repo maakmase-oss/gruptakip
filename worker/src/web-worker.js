@@ -3,7 +3,7 @@ const port=Number(process.env.PORT||3000),apiKey=process.env.WORKER_API_KEY||"",
 const client=new Client({authStrategy:new LocalAuth({clientId:"gruptakip",dataPath:"/data/waweb"}),puppeteer:{headless:true,args:["--no-sandbox","--disable-setuid-sandbox","--disable-dev-shm-usage","--no-zygote","--disable-gpu"]}});
 const mark=(s)=>{waState=s;lastWaEvent=new Date().toISOString();console.log("WA_STATE",s,lastWaEvent)};
 client.on("qr",x=>{qr=x;connected=false;mark("qr");console.log("WEB_QR_READY")});
-client.on("authenticated",()=>{qr=null;mark("authenticated");console.log("WHATSAPP_WEB_AUTHENTICATED")});
+client.on("authenticated",()=>{qr=null;mark("authenticated");console.log("WHATSAPP_WEB_AUTHENTICATED")});client.on("loading_screen",(percent,message)=>console.log("WA_LOADING_SCREEN",percent,message));
 client.on("ready",()=>{connected=true;qr=null;clientInfo=client.info?{wid:client.info.wid?._serialized||null,pushname:client.info.pushname||null}:null;mark("ready");console.log("WHATSAPP_WEB_READY")});
 client.on("auth_failure",m=>{connected=false;mark("auth_failure");console.error("WHATSAPP_WEB_AUTH_FAILURE",m)});
 client.on("change_state",s=>{mark("state:"+s);console.log("WHATSAPP_WEB_CHANGE_STATE",s)});
