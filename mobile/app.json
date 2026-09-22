@@ -2,6 +2,7 @@
   "expo": {
     "name": "GrupTakip",
     "slug": "gruptakip-mobile",
+    "owner": "gruptakip",
     "scheme": "gruptakip",
     "version": "0.1.0",
     "orientation": "portrait",
@@ -16,6 +17,11 @@
     "plugins": [
       "expo-router",
       "expo-secure-store"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "70ac6014-61e4-4792-8b2e-9de103a9d87d"
+      }
+    }
   }
 }
