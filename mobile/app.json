@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "GrupTakip",
+    "slug": "gruptakip-mobile",
+    "scheme": "gruptakip",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "android": {
+      "package": "com.gruptakip.mobile"
+    },
+    "ios": {
+      "bundleIdentifier": "com.gruptakip.mobile"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store"
+    ]
+  }
+}
